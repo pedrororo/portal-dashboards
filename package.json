@@ -10,13 +10,16 @@
     "typecheck": "tsc --noEmit",
     "db:up": "docker compose up -d db",
     "db:setup": "tsx --env-file=.env scripts/db-setup.ts",
-    "db:seed": "tsx --env-file=.env scripts/seed.ts"
+    "db:seed": "tsx --env-file=.env scripts/seed.ts",
+    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
+    "test:e2e": "tsx --env-file=.env tests/e2e/acesso-http.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
     "chart.js": "4.6.1",
     "jose": "6.2.15",
     "next": "15.5.29",
+    "nodemailer": "10.3.1",
     "pg": "8.23.1",
     "react": "19.1.10",
     "react-chartjs-2": "5.3.1",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "22.20.5",
+    "@types/nodemailer": "8.0.2",
     "@types/pg": "8.23.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

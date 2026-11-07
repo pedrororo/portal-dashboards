@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { getDashboard } from "@/lib/acesso";
 import { audit, query } from "@/lib/db";
 import { Grafico } from "@/components/Grafico";
+import { metabaseConfigurado, urlEmbedMetabase } from "@/lib/metabase";
 
 export default async function DashboardPage({ params }: { params: Promise<{ id: string }> }) {
   const u = await requireUser();
@@ -13,7 +14,22 @@ export default async function DashboardPage({ params }: { params: Promise<{ id: 
   await audit(u.id, "dashboard_aberto", { dashboard_id: d.id });
 
   let conteudo: React.ReactNode;
-  if (d.tipo === "iframe") {
+  if (d.tipo === "metabase") {
+    if (!metabaseConfigurado()) {
+      conteudo = <p className="erro">Metabase não configurado no servidor (METABASE_SITE_URL / METABASE_SECRET_KEY).</p>;
+    } else {
+      // filtro travado no cliente do dashboard: o usuário não consegue trocá-lo para ver outro cliente
+      const params = d.config.parametro_cliente ? { [d.config.parametro_cliente]: d.cliente_slug } : {};
+      conteudo = (
+        <iframe
+          src={await urlEmbedMetabase(d.config.dashboard!, params)}
+          title={d.nome}
+          className="painel-iframe"
+          referrerPolicy="no-referrer"
+        />
+      );
+    }
+  } else if (d.tipo === "iframe") {
     conteudo = (
       <iframe
         src={d.config.url}

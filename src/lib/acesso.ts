@@ -6,17 +6,22 @@ export type Dashboard = {
   id: number;
   cliente_id: number;
   cliente_nome: string;
+  cliente_slug: string;
   nome: string;
   descricao: string | null;
-  tipo: "interno" | "iframe";
-  config: { dataset_id?: number; grafico?: "linha" | "barra"; x?: number; y?: number[]; url?: string };
+  tipo: "interno" | "iframe" | "metabase";
+  config: {
+    dataset_id?: number; grafico?: "linha" | "barra"; x?: number; y?: number[]; // interno
+    url?: string;                                                               // iframe
+    dashboard?: number; parametro_cliente?: string;                             // metabase
+  };
 };
 
 // A regra do portal, num lugar só:
 //   admin  -> vê todos os dashboards
 //   viewer -> só os que estão em "acessos" para ele
 const SELECT = `
-  SELECT d.id, d.cliente_id, c.nome AS cliente_nome, d.nome, d.descricao, d.tipo, d.config
+  SELECT d.id, d.cliente_id, c.nome AS cliente_nome, c.slug AS cliente_slug, d.nome, d.descricao, d.tipo, d.config
     FROM dashboards d JOIN clientes c ON c.id = d.cliente_id`;
 
 export async function listDashboards(u: Usuario): Promise<Dashboard[]> {

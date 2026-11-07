@@ -7,13 +7,14 @@ import {
   alternarCliente, alternarUsuario, criarDataset, criarUsuario, excluirDashboard, redefinirSenha,
 } from "../../actions";
 import { NovoDashboardForm } from "./NovoDashboardForm";
+import { metabaseConfigurado } from "@/lib/metabase";
 
 export default async function ClientePage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
-  const [cliente] = await query<{ id: number; nome: string; ativo: boolean }>(
-    "SELECT id, nome, ativo FROM clientes WHERE id = $1", [id]);
+  const [cliente] = await query<{ id: number; nome: string; slug: string; ativo: boolean }>(
+    "SELECT id, nome, slug, ativo FROM clientes WHERE id = $1", [id]);
   if (!cliente) notFound();
 
   const [usuarios, datasets, dashboards] = await Promise.all([
@@ -124,7 +125,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
         </table>
       </div>
       <div className="card" style={{ marginTop: "0.75rem" }}>
-        <NovoDashboardForm clienteId={id} datasets={datasets.map(({ id, nome, colunas }) => ({ id, nome, colunas }))} />
+        <NovoDashboardForm clienteId={id} clienteSlug={cliente.slug} metabase={metabaseConfigurado()} datasets={datasets.map(({ id, nome, colunas }) => ({ id, nome, colunas }))} />
       </div>
     </>
   );

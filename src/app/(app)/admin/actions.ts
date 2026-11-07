@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { audit, pool, query } from "@/lib/db";
 import { parseCsv } from "@/lib/csv";
 import { gerarSenhaTemporaria, hashSenha } from "@/lib/senha";
+import { emailConfigurado, enviarSenhaTemporaria } from "@/lib/email";
 import type { Resultado } from "@/components/FormAcao";
 
 const txt = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
@@ -53,6 +54,24 @@ export async function alternarCliente(_p: Resultado, f: FormData): Promise<Resul
 
 /* ── Usuários ─────────────────────────────────────────────────────────── */
 
+// Envia a senha temporária por e-mail; sem SMTP (ou se o envio falhar) devolve a senha
+// para o admin repassar. Em ambos os casos o usuário terá de trocá-la no 1º acesso.
+async function entregarSenha(
+  adminId: number, usuarioId: number, u: { email: string; nome: string }, senha: string, motivo: "nova_conta" | "redefinicao"
+): Promise<string> {
+  if (emailConfigurado()) {
+    try {
+      await enviarSenhaTemporaria({ para: u.email, nome: u.nome, senha, motivo });
+      await audit(adminId, "senha_enviada_email", { usuario_id: usuarioId });
+      return `Senha temporária enviada para ${u.email}.`;
+    } catch (e) {
+      console.error("Falha ao enviar e-mail:", e);
+      return `Não foi possível enviar o e-mail. Senha temporária de ${u.email}: ${senha} — repasse ao usuário.`;
+    }
+  }
+  return `Senha temporária de ${u.email}: ${senha} — copie agora, ela não será mostrada de novo.`;
+}
+
 export async function criarUsuario(_p: Resultado, f: FormData): Promise<Resultado> {
   const admin = await requireAdmin();
   const nome = txt(f, "nome");
@@ -63,26 +82,29 @@ export async function criarUsuario(_p: Resultado, f: FormData): Promise<Resultad
   if (papel === "viewer" && !Number.isInteger(clienteId)) return { erro: "Usuário viewer precisa de um cliente." };
 
   const senha = gerarSenhaTemporaria();
+  let usuarioId: number;
   try {
     const [u] = await query<{ id: number }>(
-      `INSERT INTO usuarios (cliente_id, nome, email, senha_hash, papel)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      `INSERT INTO usuarios (cliente_id, nome, email, senha_hash, papel, trocar_senha)
+       VALUES ($1, $2, $3, $4, $5, true) RETURNING id`,
       [clienteId, nome, email, await hashSenha(senha), papel]);
+    usuarioId = u.id;
     await audit(admin.id, "usuario_criado", { usuario_id: u.id, email, papel, cliente_id: clienteId });
   } catch (e) { return erroBanco(e); }
   revalidatePath(clienteId ? `/admin/clientes/${clienteId}` : "/admin");
-  return { ok: `Usuário criado. Senha temporária de ${email}: ${senha} — copie agora, ela não será mostrada de novo.` };
+  return { ok: "Usuário criado. " + (await entregarSenha(admin.id, usuarioId, { email, nome }, senha, "nova_conta")) };
 }
 
 export async function redefinirSenha(_p: Resultado, f: FormData): Promise<Resultado> {
   const admin = await requireAdmin();
   const id = int(f, "usuario_id");
   const senha = gerarSenhaTemporaria();
-  const [u] = await query<{ email: string }>(
-    "UPDATE usuarios SET senha_hash = $2 WHERE id = $1 RETURNING email", [id, await hashSenha(senha)]);
+  const [u] = await query<{ email: string; nome: string }>(
+    "UPDATE usuarios SET senha_hash = $2, trocar_senha = true WHERE id = $1 RETURNING email, nome",
+    [id, await hashSenha(senha)]);
   if (!u) return { erro: "Usuário não encontrado." };
   await audit(admin.id, "senha_redefinida", { usuario_id: id });
-  return { ok: `Nova senha temporária de ${u.email}: ${senha}` };
+  return { ok: await entregarSenha(admin.id, id, u, senha, "redefinicao") };
 }
 
 export async function alternarUsuario(_p: Resultado, f: FormData): Promise<Resultado> {
@@ -125,7 +147,8 @@ export async function criarDashboard(_p: Resultado, f: FormData): Promise<Result
   const admin = await requireAdmin();
   const clienteId = int(f, "cliente_id");
   const nome = txt(f, "nome");
-  const tipo = txt(f, "tipo") === "iframe" ? "iframe" : "interno";
+  const tipoForm = txt(f, "tipo");
+  const tipo = tipoForm === "iframe" || tipoForm === "metabase" ? tipoForm : "interno";
   if (!nome) return { erro: "Informe o nome do dashboard." };
 
   let config: object;
@@ -133,6 +156,12 @@ export async function criarDashboard(_p: Resultado, f: FormData): Promise<Result
     const url = txt(f, "url");
     if (!/^https:\/\//.test(url)) return { erro: "A URL precisa começar com https://" };
     config = { url };
+  } else if (tipo === "metabase") {
+    const dashboard = int(f, "dashboard_metabase");
+    if (!Number.isInteger(dashboard) || dashboard < 1) return { erro: "Informe o número do dashboard no Metabase." };
+    const parametro = txt(f, "parametro_cliente");
+    if (parametro && !/^[a-z0-9_]+$/i.test(parametro)) return { erro: "O parâmetro deve ter só letras, números e _." };
+    config = parametro ? { dashboard, parametro_cliente: parametro } : { dashboard };
   } else {
     const datasetId = int(f, "dataset_id");
     // o dataset tem que ser do mesmo cliente do dashboard

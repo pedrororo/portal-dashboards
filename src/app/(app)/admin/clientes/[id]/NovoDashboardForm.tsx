@@ -4,10 +4,13 @@ import { FormAcao } from "@/components/FormAcao";
 import { criarDashboard } from "../../actions";
 
 type Dataset = { id: number; nome: string; colunas: string[] };
+type Tipo = "interno" | "iframe" | "metabase";
 
-export function NovoDashboardForm({ clienteId, datasets }: { clienteId: number; datasets: Dataset[] }) {
-  const tipoInicial = datasets.length ? "interno" : "iframe";
-  const [tipo, setTipo] = useState<"interno" | "iframe">(tipoInicial);
+export function NovoDashboardForm({
+  clienteId, clienteSlug, datasets, metabase,
+}: { clienteId: number; clienteSlug: string; datasets: Dataset[]; metabase: boolean }) {
+  const tipoInicial: Tipo = datasets.length ? "interno" : "iframe";
+  const [tipo, setTipo] = useState<Tipo>(tipoInicial);
   const [datasetId, setDatasetId] = useState(datasets[0]?.id ?? 0);
   const colunas = datasets.find((d) => d.id === datasetId)?.colunas ?? [];
 
@@ -25,15 +28,28 @@ export function NovoDashboardForm({ clienteId, datasets }: { clienteId: number; 
         <label>Nome<input name="nome" required /></label>
         <label>
           Tipo
-          <select name="tipo" value={tipo} onChange={(e) => setTipo(e.target.value as "interno" | "iframe")}>
+          <select name="tipo" value={tipo} onChange={(e) => setTipo(e.target.value as Tipo)}>
             <option value="interno" disabled={!datasets.length}>Gráfico do portal (a partir de um dataset)</option>
+            <option value="metabase" disabled={!metabase}>Metabase (embed assinado){metabase ? "" : " — não configurado"}</option>
             <option value="iframe">Página externa (iframe)</option>
           </select>
         </label>
       </div>
       <label>Descrição (opcional)<input name="descricao" /></label>
 
-      {tipo === "iframe" ? (
+      {tipo === "metabase" ? (
+        <>
+          <div className="linha">
+            <label>Número do dashboard no Metabase<input name="dashboard_metabase" type="number" min={1} required /></label>
+            <label>Parâmetro de cliente (opcional)<input name="parametro_cliente" placeholder="ex.: cliente" /></label>
+          </div>
+          <p className="muted">
+            O link é assinado pelo servidor a cada visualização e expira em minutos. Com o parâmetro de cliente,
+            o filtro fica travado em “{clienteSlug}”: um mesmo dashboard do Metabase pode servir vários clientes
+            sem que um veja os dados do outro. No Metabase, ative o embed do dashboard e marque esse parâmetro como “Locked”.
+          </p>
+        </>
+      ) : tipo === "iframe" ? (
         <>
           <label>URL<input name="url" type="url" placeholder="https://…" required /></label>
           <p className="aviso">

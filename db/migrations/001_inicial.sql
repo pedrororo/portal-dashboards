@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS datasets (
 --   config = {"dataset_id": 1, "grafico": "linha", "x": 0, "y": [1]}
 -- tipo 'iframe': incorpora uma URL externa (Metabase, Looker Studio...)
 --   config = {"url": "https://..."}
--- Futuro: 'powerbi' com embed token gerado no servidor.
+-- (outros tipos são adicionados nas migrations seguintes)
 CREATE TABLE IF NOT EXISTS dashboards (
   id          serial PRIMARY KEY,
   cliente_id  int NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,

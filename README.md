@@ -47,7 +47,9 @@ Regras garantidas pelo servidor em toda requisição:
 
 Com o parâmetro de cliente, **um único dashboard do Metabase serve todos os clientes**: o portal envia
 `{"cliente": "<slug do cliente>"}` travado no token, e cada usuário só enxerga os dados do próprio cliente.
-No Metabase: ative o embed do dashboard e marque o parâmetro como *Locked*.
+No Metabase: ative o embed do dashboard e marque o parâmetro como *Locked*. Testado com o Metabase v0.65.3:
+o mesmo dashboard mostra só os dados de cada cliente, um token sem o cliente é recusado e tentar trocar o
+cliente pela URL do embed devolve erro 400.
 
 Para crescer depois (ex.: Power BI Embedded), basta um novo `tipo` que gere a URL/token **no servidor**
 depois da checagem de acesso, como o `metabase` faz em `src/lib/metabase.ts` — o modelo de acessos não muda.
@@ -115,7 +117,6 @@ src/app/
 
 ## Próximos passos sugeridos
 
-- Testar o tipo `metabase` contra um Metabase real (`docker run -p 3001:3000 metabase/metabase`)
 - Tipo `powerbi` com embed token (Power BI Embedded), no mesmo molde do `metabase`
 - Admin poder desbloquear um login antes da janela de 15 minutos
 - Rodar os testes num CI (GitHub Actions com um serviço Postgres)

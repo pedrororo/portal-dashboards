@@ -1,6 +1,8 @@
 # docker compose up -d db                        só o Postgres (para npm run dev)
 # docker compose --profile app up -d --build     Postgres + migrations + portal em http://localhost:3000
 # docker compose --profile metabase up -d        Metabase em http://localhost:3001
+# nome fixo: os volumes (pgdata, metabase-data) não dependem do nome da pasta
+name: portal_dashboards
 services:
   db:
     image: postgres:16-alpine

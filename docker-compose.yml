@@ -1,3 +1,6 @@
+# docker compose up -d db                        só o Postgres (para npm run dev)
+# docker compose --profile app up -d --build     Postgres + migrations + portal em http://localhost:3000
+# docker compose --profile metabase up -d        Metabase em http://localhost:3001
 services:
   db:
     image: postgres:16-alpine
@@ -9,6 +12,58 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portal -d portal"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # aplica db/migrations e termina; o seed roda à parte:
+  #   docker compose --profile app run --rm migrate npx tsx scripts/seed.ts
+  migrate:
+    profiles: [app]
+    build:
+      context: .
+      target: ferramentas
+    image: portal-dashboards-ferramentas
+    command: ["npx", "tsx", "scripts/db-setup.ts"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://portal:portal@db:5432/portal
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    profiles: [app]
+    build:
+      context: .
+      target: app
+    image: portal-dashboards
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://portal:portal@db:5432/portal
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Configuração do Metabase (H2) fica no volume; para produção use Postgres (MB_DB_TYPE=postgres)
+  metabase:
+    profiles: [metabase]
+    image: metabase/metabase:v0.65.3.6
+    ports:
+      - "3001:3000"
+    volumes:
+      - metabase-data:/metabase.db
+    restart: unless-stopped
 
 volumes:
   pgdata:
+  metabase-data:

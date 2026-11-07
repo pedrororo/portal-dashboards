@@ -72,6 +72,24 @@ O seed imprime as senhas dos usuários de demonstração. Cada usuário pode tro
 Para mudar o banco, crie um novo arquivo numerado em `db/migrations/` (ex.: `003_....sql`); o `db:setup`
 aplica só as que ainda não rodaram.
 
+## Rodando tudo com Docker
+
+O mesmo `docker-compose.yml` sobe o banco, as migrations, o portal e (opcional) o Metabase:
+
+```bash
+cp .env.example .env                                   # SESSION_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD...
+docker compose --profile app up -d --build             # Postgres + migrations + portal em http://localhost:3000
+docker compose --profile app run --rm migrate npx tsx scripts/seed.ts   # dados de demonstração (1ª vez)
+docker compose --profile metabase up -d                # Metabase em http://localhost:3001 (opcional)
+```
+
+- Dentro do Docker o portal usa o banco `db:5432`; o `DATABASE_URL` do `.env` vale só para rodar fora do Docker.
+- `docker compose up -d db` continua subindo só o Postgres para o `npm run dev`.
+- A imagem do portal (`Dockerfile`, etapa `app`) tem só o servidor compilado, roda sem root e tem healthcheck.
+  A etapa `ferramentas` tem o código completo e é usada para migrations e seed.
+- O Metabase guarda a própria configuração (H2) no volume `metabase-data`. Para produção, use Postgres
+  (`MB_DB_TYPE=postgres` e `MB_DB_*`).
+
 ## Testes
 
 ```bash
@@ -82,6 +100,9 @@ BASE_URL=http://localhost:3000 npm run test:e2e   # matriz de acesso via HTTP co
 - `tests/unit.test.ts`: CSV, senhas temporárias, token de sessão, assinatura do Metabase
 - `tests/db.test.ts`: restrições entre clientes, quem vê qual dashboard, limite de login
 - `tests/e2e/acesso-http.ts`: cada usuário x cada dashboard e página de admin, usuário desativado e senha temporária
+
+No GitHub, `.github/workflows/ci.yml` roda tipos e testes a cada push/PR (com um Postgres de serviço) e, na `main`,
+publica a imagem do portal em `ghcr.io/pedrororo/portal-dashboards` com as tags `<commit>` e `latest`.
 
 ## Fluxo do admin
 
@@ -97,6 +118,8 @@ Tudo fica registrado em **Auditoria**.
 
 ```
 db/migrations/                        tabelas e restrições (aplicadas em ordem)
+Dockerfile, docker-compose.yml        imagem do portal e a pilha completa
+.github/workflows/ci.yml              testes + publicação da imagem no GHCR
 scripts/db-setup.ts, seed.ts          criação e dados de demonstração
 src/middleware.ts                     bloqueia páginas sem sessão
 src/lib/
@@ -119,4 +142,4 @@ src/app/
 
 - Tipo `powerbi` com embed token (Power BI Embedded), no mesmo molde do `metabase`
 - Admin poder desbloquear um login antes da janela de 15 minutos
-- Rodar os testes num CI (GitHub Actions com um serviço Postgres)
+- Publicar em um servidor (VPS com Docker Compose ou Render) usando a imagem do GHCR

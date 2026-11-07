@@ -63,7 +63,7 @@ npm install
 cp .env.example .env        # ajuste SESSION_SECRET, ADMIN_EMAIL e ADMIN_PASSWORD
 npm run db:up               # Postgres em localhost:5433 (docker compose)
 npm run db:setup            # aplica as migrations de db/migrations (pode rodar sempre)
-npm run db:seed             # admin + 2 clientes de demonstração (dados públicos do Cepea)
+npm run db:seed             # admin + 2 clientes de demonstração (preços sintéticos)
 npm run dev                 # http://localhost:3000
 ```
 

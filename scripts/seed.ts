@@ -1,5 +1,5 @@
 // Cria o admin (ADMIN_EMAIL / ADMIN_PASSWORD do .env) e dois clientes de demonstração
-// com dados públicos do Cepea. Só roda com o banco vazio. Uso: npm run db:seed
+// com séries sintéticas no formato do Cepea (scripts/gerar-dados-demo.ts). Só roda com o banco vazio. Uso: npm run db:seed
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Pool } from "pg";
@@ -79,8 +79,8 @@ async function main() {
     const granja = await cliente("Granja Demo", "granja-demo");
     const dsSul = await dataset(granja, "Suíno vivo — Sul", juntarSeries({ PR: "suino_PR.csv", SC: "suino_SC.csv", RS: "suino_RS.csv" }));
     const dsSudeste = await dataset(granja, "Suíno vivo — Sudeste", juntarSeries({ SP: "suino_SP.csv", MG: "suino_MG.csv" }));
-    const dSul = await dashboard(granja, "Suíno vivo — Sul", "Indicador Cepea, R$/kg, PR · SC · RS", { dataset_id: dsSul, grafico: "linha", x: 0, y: [1, 2, 3] });
-    const dSudeste = await dashboard(granja, "Suíno vivo — Sudeste", "Indicador Cepea, R$/kg, SP · MG", { dataset_id: dsSudeste, grafico: "linha", x: 0, y: [1, 2] });
+    const dSul = await dashboard(granja, "Suíno vivo — Sul", "Série sintética, R$/kg, PR · SC · RS", { dataset_id: dsSul, grafico: "linha", x: 0, y: [1, 2, 3] });
+    const dSudeste = await dashboard(granja, "Suíno vivo — Sudeste", "Série sintética, R$/kg, SP · MG", { dataset_id: dsSudeste, grafico: "linha", x: 0, y: [1, 2] });
     const gerente = await usuario(granja, "Gerente Granja", "gerente@granja.demo");
     const tecnico = await usuario(granja, "Técnico Granja", "tecnico@granja.demo");
     await conceder(gerente, granja, [dSul, dSudeste]);
@@ -90,7 +90,7 @@ async function main() {
     const cereal = await cliente("Cerealista Demo", "cerealista-demo");
     const dsMilho = await dataset(cereal, "Milho", ler("milho.csv"));
     const dsDolar = await dataset(cereal, "Dólar", ler("dolar.csv"));
-    const dMilho = await dashboard(cereal, "Milho", "Indicador Cepea, R$ e US$ por saca", { dataset_id: dsMilho, grafico: "linha", x: 0, y: [1] });
+    const dMilho = await dashboard(cereal, "Milho", "Série sintética, R$ e US$ por saca", { dataset_id: dsMilho, grafico: "linha", x: 0, y: [1] });
     const dDolar = await dashboard(cereal, "Dólar", "Dólar à vista (R$)", { dataset_id: dsDolar, grafico: "linha", x: 0, y: [1] });
     const comprador = await usuario(cereal, "Comprador Cerealista", "compras@cerealista.demo");
     await conceder(comprador, cereal, [dMilho, dDolar]);

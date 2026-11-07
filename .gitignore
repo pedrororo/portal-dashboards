@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.env
+*.log
+next-env.d.ts
+*.tsbuildinfo
+.demo-credentials.txt
